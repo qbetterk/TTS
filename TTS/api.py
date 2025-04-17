@@ -189,9 +189,13 @@ class TTS(nn.Module):
                 # Count occurrences before replacement
                 infinity_count = config_str.count('Infinity')
                 print(f"Found {infinity_count} occurrences of 'Infinity' in config file.")
-                
-                config_str = config_str.replace('Infinity', '1e9')
-                print(f"Replaced 'Infinity' with '1e9'.")
+                if infinity_count > 0:
+                    config_str = config_str.replace('Infinity', '1e9')
+                    print(f"Replaced 'Infinity' with '1e9'.")
+                else:
+                    print("No 'Infinity' found in config file.")
+                    print(f"Config file content:")
+                    print(config_str)
                 
                 # Write back to file after verifying JSON format
                 try:
