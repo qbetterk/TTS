@@ -173,21 +173,36 @@ class TTS(nn.Module):
         )
         # Check if config file is JSON format and try to load it
         if config_path and config_path.endswith('.json'):
+            print(f"Loading config from JSON file: {config_path}")
             try:
                 with open(config_path) as f:
                     json.load(f)
-            except json.JSONDecodeError:
+                print("✅ Config file loaded successfully.")
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON load error: {str(e)}")
+                print("📝 Attempting to fix Infinity values in config...")
                 # If loading fails, it may be because it contains Infinity values
                 # Read file content and replace Infinity
                 with open(config_path) as f:
                     config_str = f.read()
+                    
+                # Count occurrences before replacement
+                infinity_count = config_str.count('Infinity')
+                print(f"Found {infinity_count} occurrences of 'Infinity' in config file.")
+                
                 config_str = config_str.replace('Infinity', '1e9')
+                print(f"Replaced 'Infinity' with '1e9'.")
+                
                 # Write back to file after verifying JSON format
                 try:
                     config_json = json.loads(config_str)
+                    print("✅ Modified JSON validated successfully.")
                     with open(config_path, 'w') as f:
                         json.dump(config_json, f)
+                    print(f"✅ Fixed config saved to {config_path}")
                 except json.JSONDecodeError as e:
+                    print(f"❌ Config still has JSON errors after fixing Infinity values: {str(e)}")
+                    print(f"❌ JSON snippet near the error: {config_str[max(0, e.pos-50):e.pos+50]}")
                     raise ValueError(f"Config file still has invalid JSON format after replacing Infinity: {str(e)}")
                     
         # init synthesizer
