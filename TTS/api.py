@@ -2,7 +2,7 @@ import tempfile
 import warnings
 from pathlib import Path
 from typing import Union
-
+import json
 import numpy as np
 from torch import nn
 
@@ -171,7 +171,25 @@ class TTS(nn.Module):
         model_path, config_path, vocoder_path, vocoder_config_path, model_dir = self.download_model_by_name(
             model_name
         )
-
+        # Check if config file is JSON format and try to load it
+        if config_path and config_path.endswith('.json'):
+            try:
+                with open(config_path) as f:
+                    json.load(f)
+            except json.JSONDecodeError:
+                # If loading fails, it may be because it contains Infinity values
+                # Read file content and replace Infinity
+                with open(config_path) as f:
+                    config_str = f.read()
+                config_str = config_str.replace('Infinity', '1e9')
+                # Write back to file after verifying JSON format
+                try:
+                    config_json = json.loads(config_str)
+                    with open(config_path, 'w') as f:
+                        json.dump(config_json, f)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Config file still has invalid JSON format after replacing Infinity: {str(e)}")
+                    
         # init synthesizer
         # None values are fetch from the model
         self.synthesizer = Synthesizer(
