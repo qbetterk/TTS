@@ -530,15 +530,17 @@ class ModelManager(object):
 
     def check_config_file(self, config_path: str):
         # Check if config file is JSON format and try to load it
+        import os
+        local_rank = os.environ.get('LOCAL_RANK', '0')
         if config_path and config_path.endswith('.json'):
-            print(f"Loading config from JSON file: {config_path}")
+            print("rank:", local_rank, f"Loading config from JSON file: {config_path}")
             try:
                 with open(config_path) as f:
                     json.load(f)
-                print("✅ Config file loaded successfully.")
+                print("rank:", local_rank, "✅ Config file loaded successfully.")
             except json.JSONDecodeError as e:
-                print(f"❌ JSON load error: {str(e)}")
-                print("📝 Attempting to fix Infinity values in config...")
+                print("rank:", local_rank, f"❌ JSON load error: {str(e)}")
+                print("rank:", local_rank, "📝 Attempting to fix Infinity values in config...")
                 # If loading fails, it may be because it contains Infinity values
                 # Read file content and replace Infinity
                 with open(config_path) as f:
@@ -546,12 +548,12 @@ class ModelManager(object):
                     
                 # Count occurrences before replacement
                 infinity_count = config_str.count('Infinity')
-                print(f"Found {infinity_count} occurrences of 'Infinity' in config file.")
+                print("rank:", local_rank, f"Found {infinity_count} occurrences of 'Infinity' in config file.")
                 if infinity_count > 0:
                     config_str = config_str.replace('Infinity', '1e9')
-                    print(f"Replaced 'Infinity' with '1e9'.")
+                    print("rank:", local_rank, f"Replaced 'Infinity' with '1e9'.")
                 else:
-                    print("No 'Infinity' found in config file.")
+                    print("rank:", local_rank, "No 'Infinity' found in config file.")
                     print(f"Config file content:")
                     print(config_str)
                     print(f"{config_str} is empty",config_str == "")
@@ -559,13 +561,13 @@ class ModelManager(object):
                 # Write back to file after verifying JSON format
                 try:
                     config_json = json.loads(config_str)
-                    print("✅ Modified JSON validated successfully.")
+                    print("rank:", local_rank, "✅ Modified JSON validated successfully.")
                     with open(config_path, 'w') as f:
                         json.dump(config_json, f)
-                    print(f"✅ Fixed config saved to {config_path}")
+                    print("rank:", local_rank, f"✅ Fixed config saved to {config_path}")
                 except json.JSONDecodeError as e:
-                    print(f"❌ Config still has JSON errors after fixing Infinity values: {str(e)}")
-                    print(f"❌ JSON snippet near the error: {config_str[max(0, e.pos-50):e.pos+50]}")
+                    print("rank:", local_rank, f"❌ Config still has JSON errors after fixing Infinity values: {str(e)}")
+                    print("rank:", local_rank, f"❌ JSON snippet near the error: {config_str[max(0, e.pos-50):e.pos+50]}")
                     raise ValueError(f"Config file still has invalid JSON format after replacing Infinity: {str(e)}")
                     
     @staticmethod
