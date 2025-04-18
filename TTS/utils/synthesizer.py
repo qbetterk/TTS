@@ -294,9 +294,9 @@ class Synthesizer(nn.Module):
         if text:
             sens = [text]
             if split_sentences:
-                print(" > Text splitted to sentences.")
+                # print(" > Text splitted to sentences.")
                 sens = self.split_into_sentences(text)
-            print(sens)
+            # print(sens)
 
         # handle multi-speaker
         if "voice_dir" in kwargs:
