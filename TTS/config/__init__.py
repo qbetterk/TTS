@@ -129,13 +129,16 @@ def load_config(config_path: str) -> Coqpit:
         with fsspec.open(config_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
     elif ext == ".json":
-        check_json_config_file(config_path)
         try:
             with fsspec.open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except json.decoder.JSONDecodeError:
-            # backwards compat.
-            data = read_json_with_comments(config_path)
+            try:
+                # backwards compat.
+                data = read_json_with_comments(config_path)
+            except json.JSONDecodeError as e:
+                print(f"Error loading JSON config file: {config_path}")
+                check_json_config_file(config_path)
     else:
         raise TypeError(f" [!] Unknown config file type {ext}")
     config_dict.update(data)
