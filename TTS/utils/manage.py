@@ -417,8 +417,12 @@ class ModelManager(object):
             model not in ["tortoise-v2", "bark"] and "fairseq" not in model_name and "xtts" not in model_name
         ):  # TODO:This is stupid but don't care for now.
             output_model_path, output_config_path = self._find_files(output_path)
+        print("******** checking config file before update paths *********")
+        self.check_config_file(output_config_path)
         # update paths in the config.json
         self._update_paths(output_path, output_config_path)
+        print("******** checking config file after update paths *********")
+        self.check_config_file(output_config_path)
         return output_model_path, output_config_path, model_item
 
     @staticmethod
@@ -524,6 +528,46 @@ class ModelManager(object):
                     config[field_name] = new_path
             config.save_json(config_path)
 
+    def check_config_file(self, config_path: str):
+        # Check if config file is JSON format and try to load it
+        if config_path and config_path.endswith('.json'):
+            print(f"Loading config from JSON file: {config_path}")
+            try:
+                with open(config_path) as f:
+                    json.load(f)
+                print("✅ Config file loaded successfully.")
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON load error: {str(e)}")
+                print("📝 Attempting to fix Infinity values in config...")
+                # If loading fails, it may be because it contains Infinity values
+                # Read file content and replace Infinity
+                with open(config_path) as f:
+                    config_str = f.read()
+                    
+                # Count occurrences before replacement
+                infinity_count = config_str.count('Infinity')
+                print(f"Found {infinity_count} occurrences of 'Infinity' in config file.")
+                if infinity_count > 0:
+                    config_str = config_str.replace('Infinity', '1e9')
+                    print(f"Replaced 'Infinity' with '1e9'.")
+                else:
+                    print("No 'Infinity' found in config file.")
+                    print(f"Config file content:")
+                    print(config_str)
+                    print(f"{config_str} is empty",config_str == "")
+                
+                # Write back to file after verifying JSON format
+                try:
+                    config_json = json.loads(config_str)
+                    print("✅ Modified JSON validated successfully.")
+                    with open(config_path, 'w') as f:
+                        json.dump(config_json, f)
+                    print(f"✅ Fixed config saved to {config_path}")
+                except json.JSONDecodeError as e:
+                    print(f"❌ Config still has JSON errors after fixing Infinity values: {str(e)}")
+                    print(f"❌ JSON snippet near the error: {config_str[max(0, e.pos-50):e.pos+50]}")
+                    raise ValueError(f"Config file still has invalid JSON format after replacing Infinity: {str(e)}")
+                    
     @staticmethod
     def _download_zip_file(file_url, output_folder, progress_bar):
         """Download the github releases"""
