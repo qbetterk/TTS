@@ -128,8 +128,6 @@ class TTS(nn.Module):
     def download_model_by_name(self, model_name: str):
         model_path, config_path, model_item = self.manager.download_model(model_name)
 
-        print(f"******** checking config file after download {model_name} *********")
-        self.check_config_file(config_path)
         if "fairseq" in model_name or (model_item is not None and isinstance(model_item["model_url"], list)):
             # return model directory if there are multiple files
             # we assume that the model knows how to load itself
@@ -137,54 +135,8 @@ class TTS(nn.Module):
         if model_item.get("default_vocoder") is None:
             return model_path, config_path, None, None, None
         vocoder_path, vocoder_config_path, _ = self.manager.download_model(model_item["default_vocoder"])
-        print(f"******** checking config file after download {model_item['default_vocoder']} *********")
-        self.check_config_file(vocoder_config_path)
+
         return model_path, config_path, vocoder_path, vocoder_config_path, None
-    
-
-    def check_config_file(self, config_path: str):
-        # Check if config file is JSON format and try to load it
-        import os
-        local_rank = os.environ.get('LOCAL_RANK', '0')
-
-        if config_path and config_path.endswith('.json'):
-            print("rank:", local_rank, f"Loading config from JSON file: {config_path}")
-            try:
-                with open(config_path) as f:
-                    json.load(f)
-                print("rank:", local_rank, "✅ Config file loaded successfully.")
-            except json.JSONDecodeError as e:
-                print("rank:", local_rank, f"❌ JSON load error: {str(e)}")
-                print("rank:", local_rank, "📝 Attempting to fix Infinity values in config...")
-                # If loading fails, it may be because it contains Infinity values
-                # Read file content and replace Infinity
-                with open(config_path) as f:
-                    config_str = f.read()
-                    
-                # Count occurrences before replacement
-                infinity_count = config_str.count('Infinity')
-                print("rank:", local_rank, f"Found {infinity_count} occurrences of 'Infinity' in config file.")
-                if infinity_count > 0:
-                    config_str = config_str.replace('Infinity', '1e9')
-                    print("rank:", local_rank, f"Replaced 'Infinity' with '1e9'.")
-                else:
-                    print("rank:", local_rank, "No 'Infinity' found in config file.")
-                    print(f"Config file content:")
-                    print(config_str)
-                    print(f"{config_path} is empty",config_str == "")
-                
-                # Write back to file after verifying JSON format
-                try:
-                    config_json = json.loads(config_str)
-                    print("rank:", local_rank, "✅ Modified JSON validated successfully.")
-                    with open(config_path, 'w') as f:
-                        json.dump(config_json, f)
-                    print("rank:", local_rank, f"✅ Fixed config saved to {config_path}")
-                except json.JSONDecodeError as e:
-                    print("rank:", local_rank, f"❌ Config still has JSON errors after fixing Infinity values: {str(e)}")
-                    print("rank:", local_rank, f"❌ JSON snippet near the error: {config_str[max(0, e.pos-50):e.pos+50]}")
-                    raise ValueError(f"Config file still has invalid JSON format after replacing Infinity: {str(e)}")
-                    
 
     def load_model_by_name(self, model_name: str, gpu: bool = False):
         """Load one of the 🐸TTS models by name.

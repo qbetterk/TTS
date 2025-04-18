@@ -65,6 +65,51 @@ def _process_model_name(config_dict: Dict) -> str:
     return model_name
 
 
+
+def check_json_config_file(config_path: str):
+    # Check if config file is JSON format and try to load it
+    import os
+    local_rank = os.environ.get('LOCAL_RANK', '0')
+    if config_path and config_path.endswith('.json'):
+        print("rank:", local_rank, f"Loading config from JSON file: {config_path}")
+        try:
+            with open(config_path) as f:
+                json.load(f)
+            print("rank:", local_rank, "✅ Config file loaded successfully.")
+        except json.JSONDecodeError as e:
+            print("rank:", local_rank, f"❌ JSON load error: {str(e)}")
+            print("rank:", local_rank, "📝 Attempting to fix Infinity values in config...")
+            # If loading fails, it may be because it contains Infinity values
+            # Read file content and replace Infinity
+            with open(config_path) as f:
+                config_str = f.read()
+                
+            # Count occurrences before replacement
+            infinity_count = config_str.count('Infinity')
+            print("rank:", local_rank, f"Found {infinity_count} occurrences of 'Infinity' in config file.")
+            if infinity_count > 0:
+                config_str = config_str.replace('Infinity', '1e9')
+                print("rank:", local_rank, f"Replaced 'Infinity' with '1e9'.")
+            else:
+                print("rank:", local_rank, "No 'Infinity' found in config file.")
+                print(f"Config file content:")
+                print(config_str)
+                print(f"{config_path} is empty",config_str == "")
+            
+            # Write back to file after verifying JSON format
+            try:
+                config_json = json.loads(config_str)
+                print("rank:", local_rank, "✅ Modified JSON validated successfully.")
+                with open(config_path, 'w') as f:
+                    json.dump(config_json, f)
+                print("rank:", local_rank, f"✅ Fixed config saved to {config_path}")
+            except json.JSONDecodeError as e:
+                print("rank:", local_rank, f"❌ Config still has JSON errors after fixing Infinity values: {str(e)}")
+                print("rank:", local_rank, f"❌ JSON snippet near the error: {config_str[max(0, e.pos-50):e.pos+50]}")
+                raise ValueError(f"Config file still has invalid JSON format after replacing Infinity: {str(e)}")
+                
+
+
 def load_config(config_path: str) -> Coqpit:
     """Import `json` or `yaml` files as TTS configs. First, load the input file as a `dict` and check the model name
     to find the corresponding Config class. Then initialize the Config.
@@ -84,6 +129,7 @@ def load_config(config_path: str) -> Coqpit:
         with fsspec.open(config_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
     elif ext == ".json":
+        check_json_config_file(config_path)
         try:
             with fsspec.open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -98,7 +144,6 @@ def load_config(config_path: str) -> Coqpit:
     config = config_class()
     config.from_dict(config_dict)
     return config
-
 
 def check_config_and_model_args(config, arg_name, value):
     """Check the give argument in `config.model_args` if exist or in `config` for
