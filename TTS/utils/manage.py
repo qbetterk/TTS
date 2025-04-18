@@ -556,7 +556,7 @@ class ModelManager(object):
                     print("rank:", local_rank, "No 'Infinity' found in config file.")
                     print(f"Config file content:")
                     print(config_str)
-                    print(f"{config_str} is empty",config_str == "")
+                    print(f"{config_path} is empty",config_str == "")
                 
                 # Write back to file after verifying JSON format
                 try:
